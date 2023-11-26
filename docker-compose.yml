@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  deep-learning:
+    build: .
+    entrypoint: >
+      jupyter lab 
+        --allow-root
+        --ip=0.0.0.0
+        --no-browser
+        --NotebookApp.token=''
+    volumes:
+      - ./src:/dl
+    ports:
+      - 8888
+
+    # GPUを使う場合の設定
+    # environment:
+    #   - "NVIDIA_VISIBLE_DEVICES=all"
+    #   - "NVIDIA_DRIVER_CAPABILITIES=all"
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - capabilities:
+    #           - gpu
