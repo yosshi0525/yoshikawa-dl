@@ -1,9 +1,9 @@
-version: '3'
+version: '2.3'
 
 services:
   deep-learning:
     build: .
-    entrypoint: >
+    entrypoint:
       jupyter lab 
         --allow-root
         --ip=0.0.0.0
@@ -12,15 +12,8 @@ services:
     volumes:
       - ./src:/dl
     ports:
-      - 8888
-
-    # GPUを使う場合の設定
-    # environment:
-    #   - "NVIDIA_VISIBLE_DEVICES=all"
-    #   - "NVIDIA_DRIVER_CAPABILITIES=all"
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - capabilities:
-    #           - gpu
+      - 11250:8888
+    environment:
+      - "NVIDIA_VISIBLE_DEVICES=all"
+      - "NVIDIA_DRIVER_CAPABILITIES=all"
+    runtime: nvidia
