@@ -1,4 +1,5 @@
 {
+    "name": "yoshikawadlko",
     "dockerComposeFile": "../docker-compose.yml",
     "service": "deep-learning",
     "workspaceFolder": "/dl",

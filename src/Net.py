@@ -1,4 +1,4 @@
-import torch.nn as nn
+from torch import nn, Tensor
 
 
 class Net(nn.Module):
@@ -13,7 +13,7 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(32 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 10)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = self.conv1(x)
         x = self.relu(x)
         x = self.pool(x)

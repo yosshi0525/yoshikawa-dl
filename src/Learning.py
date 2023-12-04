@@ -1,109 +1,114 @@
 import datetime
+import os
+import numpy as np
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import torchvision
+from torch import device, nn, optim, Tensor
+from torch.utils.data import DataLoader
+from torchvision import datasets
+from torchvision.transforms import Compose, ToTensor, Normalize
 
-import torch.utils.data.dataloader as dataloader
-from Net import Net
-from params import BATCH_SIZE, WEIGHT_DECAY, LEARNING_RATE, EPOCH, PATH
+from params import BATCH_SIZE, LEARNING_RATE, MOMENTUM, WEIGHT_DECAY, EPOCH, PATH
 
-transform = torchvision.transforms.Compose(
-    [
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize((0.5,), (0.5,)),
-    ]
-)
+transform = Compose([ToTensor(), Normalize((0.5,), (0.5,))])
 
-trainset = torchvision.datasets.MNIST(
-    root=PATH, train=True, transform=transform, download=True
-)
-trainloader = torch.utils.data.DataLoader(
+trainset = datasets.MNIST(root=PATH, train=True, transform=transform, download=True)
+train_loader = DataLoader(
     dataset=trainset,
     batch_size=BATCH_SIZE,
     shuffle=True,
-    num_workers=40,
+    num_workers=os.cpu_count(),
 )
 
-testset = torchvision.datasets.MNIST(
-    root=PATH, train=False, transform=transform, download=True
+testset = datasets.MNIST(root=PATH, train=False, transform=transform, download=True)
+test_loader = DataLoader(
+    dataset=testset,
+    batch_size=BATCH_SIZE,
+    shuffle=False,
+    num_workers=os.cpu_count(),
 )
-testloader = torch.utils.data.DataLoader(
-    dataset=testset, batch_size=BATCH_SIZE, shuffle=False, num_workers=40
-)
-
-
-device = torch.device("cuda")
-criterion = nn.CrossEntropyLoss()  # 損失関数の定義
 
 
 class Learning:
-    def __init__(self) -> None:
-        self.net = Net().to(device)
-        optimizer = optim.SGD(
+    def __init__(self, net: nn.Module) -> None:
+        self.device = device("cuda")
+        self.net: nn.Module = net().to(self.device)
+        self.optimizer = optim.SGD(
             self.net.parameters(),
             lr=LEARNING_RATE,
-            momentum=0.9,
+            momentum=MOMENTUM,
             weight_decay=WEIGHT_DECAY,
         )
-
-        self.train_loss_value = []
-        self.train_acc_value = []
-        self.test_loss_value = []
-        self.test_acc_value = []
+        self.loss_function = nn.CrossEntropyLoss()  # 損失関数の定義
+        self.reset_data()
 
     # エポックごとに学習
-    def epoch_learn(self):
-        for inputs, labels in trainloader:
-            inputs, labels = inputs.to(device), labels.to(device)
-            self.optimizer.zero_grad()
-            outputs = self.net(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            self.optimizer.step()
+    def mini_batch_learning(self):
+        for inputs, labels in train_loader:
+            inputs: Tensor = inputs.to(self.device)
+            labels: Tensor = labels.to(self.device)
+            self.optimizer.zero_grad()  # 勾配を明示的に0に初期化
+            outputs: Tensor = self.net(inputs)  # 順伝播
+            loss: Tensor = self.loss_function(outputs, labels)  # 誤差の計算
+            loss.backward()  # 誤差逆伝播法で重みを変更
+            self.optimizer.step()  # 次のステップ
 
     # エポックごとにテスト
-    def epoch_test(self, loader: torch.Dataloader) -> tuple[float, float]:
+    def mini_batch_test(self, loader: DataLoader) -> tuple[float, float]:
         sum_loss = 0.0  # lossの合計
-        sum_correct = 0  # 正解率の合計
-        sum_total = 0  # dataの数の合計
+        correct_count = 0  # 正解数
 
         for inputs, labels in loader:
-            inputs, labels = inputs.to(device), labels.to(device)
+            inputs: Tensor = inputs.to(self.device)
+            labels: Tensor = labels.to(self.device)
             self.optimizer.zero_grad()  # 勾配を明示的に0に初期化
-            outputs = self.net(inputs)
-            loss = criterion(outputs, labels)  # 誤差の計算
+            outputs: Tensor = self.net(inputs)
+            loss: Tensor = self.loss_function(outputs, labels)  # 誤差の計算
             sum_loss += loss.item()  # lossを足していく
-            _, predicted = outputs.max(1)  # 出力の最大値の添字(予想位置)を取得
-            sum_total += labels.size(0)  # labelの数を足していくことでデータの総和を取る
-            # 予想位置と実際の正解を比べ,正解している数だけ足す
-            sum_correct += (predicted == labels).sum().item()
+            predicted: Tensor = outputs.max(1)[1]  # 出力の最大値の添字(予想位置)を取得 -> AIが予想した数字
+            correct_count += (predicted == labels).sum().item()  # 予想が正解であればカウント
 
-        loss = sum_loss * BATCH_SIZE / len(testloader.dataset)
-        accuracy = float(sum_correct / sum_total)
+        loss = sum_loss / loader.batch_size
+        accuracy = correct_count / len(loader.dataset)
 
         return loss, accuracy
 
-    def learn(self):
-        print(f"start learning at {0}")
+    def reset_data(self):
+        self.train_loss_value = np.empty(EPOCH)
+        self.train_acc_value = np.empty(EPOCH)
+        self.test_loss_value = np.empty(EPOCH)
+        self.test_acc_value = np.empty(EPOCH)
 
+    def learn(self):
+        self.reset_data()
+
+        # 学習開始のログ出力
+        starting_time = datetime.datetime.now()
+        print(f"start learning at {starting_time.strftime('%H:%M:%S')}")
+
+        # エポック数だけ学習
         for epoch in range(EPOCH):
-            print("epoch", epoch + 1)  # epoch数の出力
+            print("epoch", epoch + 1)  # エポック数の出力
 
             # 学習
-            self.epoch_learn()
+            self.mini_batch_learning()
 
             # train dataを使ってテストをする(パラメータ更新がないようになっている)
-            loss, accuracy = self.epoch_test(trainloader)
-            self.train_loss_value.append(loss)  # traindataのlossをグラフ描画のためにlistに保持
-            self.train_acc_value.append(accuracy)  # traindataのaccuracyをグラフ描画のためにlistに保持
+            loss, accuracy = self.mini_batch_test(train_loader)
+            self.train_loss_value[epoch] = loss
+            self.train_acc_value[epoch] = accuracy
             print(f"train mean loss={loss}, accuracy={accuracy}")  # lossとaccuracy出力
 
             # test dataを使ってテストをする
-            loss, accuracy = self.epoch_test(testloader)
-            self.test_loss_value.append(loss)
-            self.test_acc_value.append(accuracy)
+            loss, accuracy = self.mini_batch_test(test_loader)
+            self.test_loss_value[epoch] = loss
+            self.test_acc_value[epoch] = accuracy
             print(f"test  mean loss={loss}, accuracy={accuracy}")  # ログの出力
 
-        print(f"learning finished at {0}")
+        # 学習終了のログ出力
+        finish_time = datetime.datetime.now()
+        print(f"learning finished at {finish_time.strftime('%H:%M:%S')}")
+        print(f"took {finish_time - starting_time}")
+
+    def save(self):
+        torch.save(self.net.state_dict(), f"{PATH}/model.pth")
