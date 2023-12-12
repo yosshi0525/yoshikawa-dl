@@ -10,29 +10,31 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 
 from params import BATCH_SIZE, LEARNING_RATE, MOMENTUM, WEIGHT_DECAY, EPOCH, PATH
 
+num_workers = os.cpu_count() or 1
+
 transform = Compose([ToTensor(), Normalize((0.5,), (0.5,))])
 
 trainset = datasets.MNIST(root=PATH, train=True, transform=transform, download=True)
-train_loader = DataLoader(
+train_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
     dataset=trainset,
     batch_size=BATCH_SIZE,
     shuffle=True,
-    num_workers=os.cpu_count(),
+    num_workers=num_workers,
 )
 
 testset = datasets.MNIST(root=PATH, train=False, transform=transform, download=True)
-test_loader = DataLoader(
+test_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
     dataset=testset,
     batch_size=BATCH_SIZE,
     shuffle=False,
-    num_workers=os.cpu_count(),
+    num_workers=num_workers,
 )
 
 
 class Learning:
     def __init__(self, net: nn.Module) -> None:
         self.device = device("cuda")
-        self.net: nn.Module = net().to(self.device)
+        self.net: nn.Module = net.to(self.device)
         self.optimizer = optim.SGD(
             self.net.parameters(),
             lr=LEARNING_RATE,
@@ -54,8 +56,10 @@ class Learning:
             self.optimizer.step()  # 次のステップ
 
     # エポックごとにテスト
-    def mini_batch_test(self, loader: DataLoader) -> tuple[float, float]:
-        sum_loss = 0.0  # lossの合計
+    def mini_batch_test(
+        self, loader: DataLoader[tuple[Tensor, Tensor]]
+    ) -> tuple[float, float]:
+        sum_loss = 0  # lossの合計
         correct_count = 0  # 正解数
 
         for inputs, labels in loader:
@@ -68,10 +72,10 @@ class Learning:
             predicted: Tensor = outputs.max(1)[1]  # 出力の最大値の添字(予想位置)を取得 -> AIが予想した数字
             correct_count += (predicted == labels).sum().item()  # 予想が正解であればカウント
 
-        loss = sum_loss / loader.batch_size
-        accuracy = correct_count / len(loader.dataset)
+        ave_loss = sum_loss / BATCH_SIZE
+        accuracy = correct_count / (BATCH_SIZE * len(loader))
 
-        return loss, accuracy
+        return ave_loss, accuracy
 
     def reset_data(self):
         self.train_loss_value = np.empty(EPOCH)

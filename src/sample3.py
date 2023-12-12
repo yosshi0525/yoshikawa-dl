@@ -7,7 +7,7 @@ from params import EPOCH
 
 PATH = "data/sample"
 
-learning = Learning(Net)
+learning = Learning(Net())
 learning.learn()
 learning.save()
 
