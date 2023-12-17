@@ -1,6 +1,7 @@
 import datetime
 import os
 import numpy as np
+import pandas as pd
 
 import torch
 from torch import device, nn, optim, Tensor
@@ -10,7 +11,7 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 
 from params import BATCH_SIZE, LEARNING_RATE, MOMENTUM, WEIGHT_DECAY, EPOCH, PATH
 
-num_workers = os.cpu_count() or 1
+num_workers = os.cpu_count() or 0
 
 transform = Compose([ToTensor(), Normalize((0.5,), (0.5,))])
 
@@ -59,7 +60,7 @@ class Learning:
     def mini_batch_test(
         self, loader: DataLoader[tuple[Tensor, Tensor]]
     ) -> tuple[float, float]:
-        sum_loss = 0  # lossの合計
+        sum_loss = 0.0  # lossの合計
         correct_count = 0  # 正解数
 
         for inputs, labels in loader:
@@ -72,7 +73,7 @@ class Learning:
             predicted: Tensor = outputs.max(1)[1]  # 出力の最大値の添字(予想位置)を取得 -> AIが予想した数字
             correct_count += (predicted == labels).sum().item()  # 予想が正解であればカウント
 
-        ave_loss = sum_loss / BATCH_SIZE
+        ave_loss = sum_loss / len(loader)
         accuracy = correct_count / (BATCH_SIZE * len(loader))
 
         return ave_loss, accuracy
@@ -110,6 +111,15 @@ class Learning:
             self.test_acc_value[epoch] = accuracy
             print(f"test  mean loss={loss}, accuracy={accuracy}")  # ログの出力
 
+        self.df = pd.DataFrame(
+            {
+                "train_loss": self.train_loss_value,
+                "train_acc": self.train_acc_value,
+                "test_loss": self.test_loss_value,
+                "test_acc": self.test_acc_value,
+            }
+        )
+
         # 学習終了のログ出力
         finish_time = datetime.datetime.now(tz)
         print(f"learning finished at {finish_time.strftime('%H:%M:%S')}")
@@ -117,3 +127,4 @@ class Learning:
 
     def save(self):
         torch.save(self.net.state_dict(), f"{PATH}/model.pth")
+        self.df.to_csv(f"{PATH}/values.csv", index=False)

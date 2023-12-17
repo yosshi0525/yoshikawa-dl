@@ -46,6 +46,7 @@ RUN pip install --upgrade pip
 RUN pip install --upgrade --no-cache-dir \
     matplotlib \
     numpy \
+    pandas \
     Pillow \
     black \
     isort \
@@ -54,4 +55,5 @@ RUN pip install --upgrade --no-cache-dir \
     'jupyterlab_code_formatter==2.0.0' \
     jupyterlab-language-pack-ja-jp \
     # PyTorch
-    --extra-index-url https://download.pytorch.org/whl/cu102 torch==1.12.1+cu102 torchvision==0.13.1+cu102 torchaudio==0.12.1
+    --extra-index-url https://download.pytorch.org/whl/cu102 \
+    torch==1.12.1+cu102 torchvision==0.13.1+cu102 torchaudio==0.12.1
