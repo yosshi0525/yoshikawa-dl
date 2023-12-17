@@ -1,6 +1,7 @@
 jupyterlab
 matplotlib
 numpy
+Pillow
 
 # PyTorch
 --extra-index-url https://download.pytorch.org/whl/cu102
