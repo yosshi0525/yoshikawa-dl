@@ -34,7 +34,7 @@ test_loader: DataLoader[tuple[Tensor, Tensor]] = DataLoader(
 
 class Learning:
     def __init__(self, net: nn.Module) -> None:
-        self.device = device("cuda")
+        self.device = device("cuda", index=1)
         self.net: nn.Module = net.to(self.device)
         self.optimizer = optim.SGD(
             self.net.parameters(),

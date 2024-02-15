@@ -6,8 +6,7 @@ from params import PATH
 
 def plot(csv_path, dir_path=PATH) -> None:
     df = pd.read_csv(csv_path)
-    epoch = len(df)
-    print(epoch)
+    # epoch = len(df)
     train_loss_value = df["train_loss"].to_numpy()
     train_acc_value = df["train_acc"].to_numpy()
     test_loss_value = df["test_loss"].to_numpy()
@@ -18,7 +17,7 @@ def plot(csv_path, dir_path=PATH) -> None:
     # 以下グラフ描画
     plt.plot(train_loss_value)
     plt.plot(test_loss_value, c="#00ff00")
-    plt.xlim(1, epoch)
+    # plt.xlim(1, epoch)
     plt.ylim(0, 2.5)
     plt.xlabel("EPOCH")
     plt.ylabel("LOSS")
@@ -29,7 +28,7 @@ def plot(csv_path, dir_path=PATH) -> None:
 
     plt.plot(train_acc_value)
     plt.plot(test_acc_value, c="#00ff00")
-    plt.xlim(1, epoch)
+    # plt.xlim(1, epoch)
     plt.ylim(0, 1)
     plt.xlabel("EPOCH")
     plt.ylabel("ACCURACY")
